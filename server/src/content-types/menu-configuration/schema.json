@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "content_manager_configurations",
+  "info": {
+    "singularName": "content-manager-configuration",
+    "pluralName": "content-manager-configurations",
+    "displayName": "Content Manager Configuration",
+    "description": "Stores the Content Manager Configuration"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "configurable": false
+    },
+    "config": {
+      "type": "json",
+      "required": true,
+      "configurable": false
+    }
+  }
+}

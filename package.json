@@ -1,41 +1,84 @@
 {
-  "name": "menu-organizer",
-  "version": "0.1.0",
-  "private": true,
-  "description": "A Strapi application",
-  "scripts": {
-    "build": "strapi build",
-    "console": "strapi console",
-    "deploy": "strapi deploy",
-    "dev": "strapi develop",
-    "develop": "strapi develop",
-    "start": "strapi start",
-    "strapi": "strapi",
-    "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+  "name": "strapi-plugin-content-manager-organizer",
+  "version": "1.0.0",
+  "description": "Organize Strapi Content Manager collection types into collapsible grouped sections",
+  "license": "MIT",
+  "author": {
+    "name": "Chetan Hasarmani",
+    "url": "https://github.com/chetanhasarmani1724"
   },
-  "dependencies": {
-    "@strapi/plugin-cloud": "5.46.0",
-    "@strapi/plugin-users-permissions": "5.46.0",
-    "@strapi/strapi": "5.46.0",
-    "pg": "8.20.0",
+  "homepage": "https://github.com/chetanhasarmani1724/strapi-content-manager-organizer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chetanhasarmani1724/strapi-content-manager-organizer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/issues"
+  },
+  "keywords": [
+    "strapi",
+    "strapi-plugin",
+    "strapi5",
+    "content-manager",
+    "sidebar",
+    "collection-types",
+    "organizer",
+    "groups"
+  ],
+  "strapi": {
+    "name": "content-manager-organizer",
+    "displayName": "Content Manager Organizer",
+    "description": "Group Content Manager collection types into collapsible sections",
+    "kind": "plugin"
+  },
+  "main": "./dist/server/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    "./strapi-admin": {
+      "source": "./admin/src/index.ts",
+      "import": "./dist/admin/index.mjs",
+      "require": "./dist/admin/index.js",
+      "default": "./dist/admin/index.js"
+    },
+    "./strapi-server": {
+      "source": "./server/src/index.ts",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "files": [
+    "admin",
+    "server",
+    "dist",
+    "strapi-admin.js",
+    "strapi-server.js",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "strapi-plugin build",
+    "watch": "strapi-plugin watch",
+    "verify": "strapi-plugin verify",
+    "prepublishOnly": "npm run build && npm run verify"
+  },
+  "devDependencies": {
+    "@strapi/design-system": "^2.0.0",
+    "@strapi/icons": "^2.0.0",
+    "@strapi/sdk-plugin": "^5.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^5.46.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "typescript": "^5"
-  },
-  "engines": {
-    "node": ">=20.0.0 <=24.x.x",
-    "npm": ">=6.0.0"
-  },
-  "strapi": {
-    "uuid": "7ac26cdb-25b9-44ea-b6ee-7263e0067d57",
-    "installId": "fd9625d8afa0372ff7f8684f3e8864d29f33102648ef8022bb9c42886f99aca0"
   }
 }

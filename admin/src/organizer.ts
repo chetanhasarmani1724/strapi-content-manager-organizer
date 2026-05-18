@@ -1,0 +1,606 @@
+import { fetchMenuConfig } from './api';
+import { DEFAULT_MENU_CONFIG } from './menu-config';
+import type { MenuGroup, MenuOrganizerConfig } from './types';
+
+const STORAGE_KEY = 'cmo-state';
+const STYLE_ID = 'cmo-styles';
+const MARKER_ATTR = 'data-cmo-organized';
+const CONFIG_EVENT = 'cmo:config-updated';
+
+let menuConfig: MenuOrganizerConfig = DEFAULT_MENU_CONFIG;
+let currentTheme: 'light' | 'dark' | null = null;
+let themeObserver: MutationObserver | null = null;
+let themeTimer: ReturnType<typeof setTimeout> | null = null;
+
+const THEMES = {
+  light: {
+    '--mo-neutral0': '#ffffff',
+    '--mo-neutral100': '#f6f6f9',
+    '--mo-neutral150': '#eaeaef',
+    '--mo-neutral500': '#8e8ea9',
+    '--mo-neutral600': '#666687',
+    '--mo-neutral800': '#32324d',
+    '--mo-primary100': '#f0f0ff',
+    '--mo-primary700': '#4945ff',
+  },
+  dark: {
+    '--mo-neutral0': '#181826',
+    '--mo-neutral100': '#212134',
+    '--mo-neutral150': '#32324d',
+    '--mo-neutral500': '#8e8ea9',
+    '--mo-neutral600': '#a5a5ba',
+    '--mo-neutral800': '#ffffff',
+    '--mo-primary100': '#32324d',
+    '--mo-primary700': '#7b79ff',
+  },
+} as const;
+
+function detectTheme(): 'light' | 'dark' {
+  try {
+    try {
+      const strapiTheme = localStorage.getItem('STRAPI_THEME');
+      if (strapiTheme === 'light' || strapiTheme === 'dark') return strapiTheme;
+    } catch { }
+
+    const body = document.body;
+    if (body) {
+      const bg = getComputedStyle(body).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        const match = bg.match(/\d+/g);
+        if (match && match.length >= 3) {
+          const [r, g, b] = match.map(Number);
+          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+          return luminance > 128 ? 'light' : 'dark';
+        }
+      }
+    }
+
+    const dataTheme = document.documentElement.getAttribute('data-theme');
+    if (dataTheme === 'light' || dataTheme === 'dark') return dataTheme;
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+function applyThemeVars(force = false) {
+  const theme = detectTheme();
+  if (!force && theme === currentTheme) return;
+
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-mo-theme', theme);
+
+  for (const [prop, value] of Object.entries(THEMES[theme])) {
+    document.documentElement.style.setProperty(prop, value);
+  }
+}
+
+function scheduleThemeSync() {
+  if (themeTimer) clearTimeout(themeTimer);
+  themeTimer = setTimeout(() => {
+    requestAnimationFrame(() => {
+      currentTheme = null;
+      applyThemeVars(true);
+    });
+  }, 100);
+}
+
+function setupThemeSync() {
+  applyThemeVars(true);
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    currentTheme = null;
+    applyThemeVars(true);
+  });
+
+  if (!themeObserver) {
+    themeObserver = new MutationObserver(() => scheduleThemeSync());
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style', 'class', 'data-theme'],
+    });
+
+    if (document.body) {
+      themeObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['style', 'class', 'data-theme'],
+      });
+    }
+  }
+
+  if (!(window as any).__moStoragePatched) {
+    const setItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function (key: string, value: string) {
+      setItem(key, value);
+      if (key.includes('THEME') || key.includes('theme')) {
+        setTimeout(() => {
+          currentTheme = null;
+          applyThemeVars(true);
+        }, 300);
+      }
+    };
+    (window as any).__moStoragePatched = true;
+  }
+
+  if (!(window as any).__moThemeFetchPatched) {
+    const currentFetch = window.fetch;
+    window.fetch = async function (...args) {
+      const response = await currentFetch.apply(this, args);
+      try {
+        const url = typeof args[0] === 'string' ? args[0] : args[0] instanceof Request ? args[0].url : '';
+        if (url.includes('/users/me') || url.includes('/auth/local')) {
+          const method = (typeof args[1] === 'object' ? args[1]?.method : '') || '';
+          if (method.toUpperCase() === 'PUT' || method.toUpperCase() === 'POST' || url.includes('/users/me')) {
+            setTimeout(() => { currentTheme = null; applyThemeVars(true); }, 500);
+            setTimeout(() => { currentTheme = null; applyThemeVars(true); }, 1500);
+          }
+        }
+      } catch { }
+      return response;
+    };
+    (window as any).__moThemeFetchPatched = true;
+  }
+}
+
+function loadGroupState(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveGroupState(state: Record<string, boolean>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch { }
+}
+
+function stripPrefix(text: string): string {
+  return text.replace(/^\d{1,3}\s+/, '');
+}
+
+function extractSingularName(href: string): string | null {
+  const match = href.match(/api::([^.]+)\./);
+  return match ? match[1] : null;
+}
+
+function findGroup(singularName: string): MenuGroup | null {
+  for (const group of menuConfig.groups) {
+    if (group.items.includes(singularName)) return group;
+  }
+  return null;
+}
+
+function injectStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `
+    .mo-group {
+      width: 100%;
+    }
+
+    .mo-header {
+      cursor: pointer;
+      width: 100%;
+      border: none;
+      padding: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      border-radius: 4px;
+      padding-left: 12px;
+      padding-right: 12px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    .mo-header:hover {
+      background-color: var(--mo-neutral100);
+    }
+
+    .mo-chevron {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.5s;
+      color: var(--mo-neutral500);
+    }
+
+    .mo-group.mo-collapsed .mo-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .mo-label {
+      padding-left: 8px;
+      font-weight: 600;
+      font-size: 1.4rem;
+      line-height: 1.43;
+      color: var(--mo-neutral800);
+    }
+
+    .mo-badge {
+      margin-left: auto;
+      padding: 0 6px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      line-height: 2rem;
+      border-radius: 4px;
+      background-color: var(--mo-neutral150);
+      color: var(--mo-neutral600);
+    }
+
+    .mo-items {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: stretch;
+      overflow: hidden;
+      transition: max-height 0.5s cubic-bezier(0, 1, 0, 1);
+    }
+
+    .mo-group.mo-collapsed .mo-items {
+      max-height: 0 !important;
+    }
+ 
+    .mo-items > li > a > div {
+      padding-left: 36px !important;
+    }
+
+    html[data-mo-theme="light"] .mo-header:hover {
+      background-color: var(--mo-neutral100);
+    }
+
+    /* Hide flat links only when the menu is actively organized into groups */
+    ol[data-cmo-organized="true"] > li:not(:has(.mo-group)) {
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* Reveal links once they are inside organized groups */
+    .mo-items > li {
+      opacity: 1 !important;
+      height: auto !important;
+      overflow: visible !important;
+      pointer-events: auto !important;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function chevronSvg(): string {
+  return '<svg width="14" height="8" viewBox="0 0 14 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M14 .889a.86.86 0 0 1-.26.625l-6 5.778a.92.92 0 0 1-.65.264.92.92 0 0 1-.65-.264l-6-5.778A.86.86 0 0 1 .18.89c0-.24.1-.451.26-.625A.92.92 0 0 1 1.09 0a.92.92 0 0 1 .65.264L7.09 5.42 12.44.264A.92.92 0 0 1 13.09 0a.92.92 0 0 1 .65.264.86.86 0 0 1 .26.625Z" fill="currentColor"/></svg>';
+}
+
+interface LinkItem {
+  li: HTMLElement;
+  link: HTMLAnchorElement;
+  singularName: string;
+}
+
+function findCollectionTypesOl(): HTMLElement | null {
+  const links = document.querySelectorAll(
+    'a[href*="/content-manager/collection-types/api::"]'
+  );
+  if (links.length < 3) return null;
+
+  const ol = links[0].closest('ol');
+  if (!ol) return null;
+
+  const olLinks = ol.querySelectorAll('a[href*="/content-manager/collection-types/api::"]');
+  if (olLinks.length < links.length * 0.8) return null;
+
+  return ol as HTMLElement;
+}
+
+function stripNumericPrefixes(items: LinkItem[]) {
+  if (!menuConfig.stripNumericPrefix) return;
+
+  for (const item of items) {
+    const walker = document.createTreeWalker(
+      item.link,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      const text = node.nodeValue || '';
+      if (/^\d{1,3}\s+\S/.test(text.trim())) {
+        node.nodeValue = stripPrefix(text.trim());
+      }
+    }
+  }
+}
+
+
+
+function restoreMenu(ol: HTMLElement) {
+  const organizedItems = Array.from(ol.querySelectorAll('.mo-items > li')) as HTMLElement[];
+
+  if (organizedItems.length === 0) return;
+
+  while (ol.firstChild) {
+    ol.removeChild(ol.firstChild);
+  }
+
+  for (const item of organizedItems) {
+    ol.appendChild(item);
+  }
+
+  ol.removeAttribute(MARKER_ATTR);
+}
+
+function reorganizeMenu(force = false) {
+  const ol = findCollectionTypesOl();
+  if (!ol) return;
+
+  if (force && ol.getAttribute(MARKER_ATTR)) {
+    restoreMenu(ol);
+  }
+
+  // If there is no pre-configured grouping, use the default Strapi content menu.
+  if (!menuConfig || !menuConfig.groups || menuConfig.groups.length === 0) {
+    if (ol.getAttribute(MARKER_ATTR)) {
+      restoreMenu(ol);
+    }
+    return;
+  }
+
+  if (ol.getAttribute(MARKER_ATTR)) return;
+
+  const items: LinkItem[] = [];
+  ol.querySelectorAll(':scope > li').forEach((li) => {
+    const link = li.querySelector(
+      'a[href*="/content-manager/collection-types/api::"]'
+    ) as HTMLAnchorElement;
+    if (!link) return;
+
+    const href = link.getAttribute('href') || '';
+    const singularName = extractSingularName(href);
+    if (!singularName) return;
+
+    items.push({ li: li as HTMLElement, link, singularName });
+  });
+
+  if (items.length < 3) return;
+
+  ol.setAttribute(MARKER_ATTR, 'true');
+
+  stripNumericPrefixes(items);
+
+  const persistedState = loadGroupState();
+  const grouped = new Map<string, { group: MenuGroup; items: LinkItem[] }>();
+  const ungrouped: LinkItem[] = [];
+
+  for (const group of menuConfig.groups) {
+    grouped.set(group.id, { group, items: [] });
+  }
+
+  for (const item of items) {
+    const group = findGroup(item.singularName);
+    if (group) {
+      grouped.get(group.id)!.items.push(item);
+    } else {
+      ungrouped.push(item);
+    }
+  }
+
+  for (const [, entry] of grouped) {
+    entry.items.sort((a, b) =>
+      entry.group.items.indexOf(a.singularName) - entry.group.items.indexOf(b.singularName)
+    );
+  }
+
+  for (const item of items) {
+    item.li.remove();
+  }
+
+  while (ol.firstChild) {
+    ol.removeChild(ol.firstChild);
+  }
+
+  function buildGroup(
+    groupId: string,
+    label: string,
+    groupItems: LinkItem[],
+    defaultExpanded: boolean
+  ): HTMLElement {
+    const isExpanded = persistedState[groupId] !== undefined
+      ? persistedState[groupId]
+      : defaultExpanded;
+
+    const wrapperLi = document.createElement('li');
+    wrapperLi.style.listStyle = 'none';
+
+    const groupEl = document.createElement('div');
+    groupEl.className = `mo-group${isExpanded ? '' : ' mo-collapsed'}`;
+    groupEl.setAttribute('data-mo-group', groupId);
+
+    const header = document.createElement('button');
+    header.className = 'mo-header';
+    header.type = 'button';
+    header.setAttribute('aria-expanded', String(isExpanded));
+
+    const chevronSpan = document.createElement('span');
+    chevronSpan.className = 'mo-chevron';
+    chevronSpan.setAttribute('aria-hidden', 'true');
+    chevronSpan.innerHTML = chevronSvg();
+    header.appendChild(chevronSpan);
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'mo-label';
+    labelSpan.textContent = label;
+    header.appendChild(labelSpan);
+
+    const badge = document.createElement('span');
+    badge.className = 'mo-badge';
+    badge.textContent = String(groupItems.length);
+    header.appendChild(badge);
+
+    header.addEventListener('click', () => {
+      const collapsed = groupEl.classList.toggle('mo-collapsed');
+      header.setAttribute('aria-expanded', String(!collapsed));
+      const state = loadGroupState();
+      state[groupId] = !collapsed;
+      saveGroupState(state);
+    });
+
+    groupEl.appendChild(header);
+
+    const itemsContainer = document.createElement('ul');
+    itemsContainer.className = 'mo-items';
+    itemsContainer.style.maxHeight = isExpanded
+      ? `${groupItems.length * 40}px`
+      : '0';
+
+    for (const item of groupItems) {
+      itemsContainer.appendChild(item.li);
+    }
+
+    const updateHeight = () => {
+      if (!groupEl.classList.contains('mo-collapsed')) {
+        itemsContainer.style.maxHeight = `${itemsContainer.scrollHeight}px`;
+      }
+    };
+
+    header.addEventListener('click', () => {
+      requestAnimationFrame(updateHeight);
+    });
+
+    groupEl.appendChild(itemsContainer);
+    wrapperLi.appendChild(groupEl);
+
+    requestAnimationFrame(updateHeight);
+
+    return wrapperLi;
+  }
+
+  for (const [groupId, entry] of grouped) {
+    if (entry.items.length === 0) continue;
+    ol.appendChild(
+      buildGroup(groupId, entry.group.label, entry.items, entry.group.defaultExpanded)
+    );
+  }
+
+  // "else dont render others" -> We do not append the 'Other' group.
+  // Any ungrouped items will simply not be rendered in the sidebar.
+}
+
+let observer: MutationObserver | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let lastUrl = '';
+let configLoaded = false;
+
+function needsReorganization(ol: HTMLElement): boolean {
+  // If any direct <li> child does NOT contain a .mo-group, the DOM is ungrouped
+  const directChildren = ol.querySelectorAll(':scope > li');
+  for (const li of directChildren) {
+    if (!li.querySelector('.mo-group')) {
+      const link = li.querySelector('a[href*="/content-manager/collection-types/api::"]');
+      if (link) return true;
+    }
+  }
+  return false;
+}
+
+function tryReorganize() {
+  if (!window.location.pathname.includes('/content-manager/')) return;
+
+  const ol = findCollectionTypesOl();
+  if (ol && needsReorganization(ol)) {
+    reorganizeMenu(true);
+  }
+}
+
+function isContentManagerPage() {
+  return window.location.pathname.includes('/content-manager/');
+}
+
+async function refreshConfig(force = false) {
+  if (!force && !isContentManagerPage()) return;
+
+  menuConfig = await fetchMenuConfig();
+  configLoaded = true;
+  const ol = findCollectionTypesOl();
+
+  if (force && ol) {
+    reorganizeMenu(true);
+    return;
+  }
+
+  scheduleRetry(100);
+}
+
+function scheduleRetry(delay = 30) {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => tryReorganize(), delay);
+}
+
+function handleNavigation() {
+  const url = window.location.pathname;
+  if (url === lastUrl) return;
+  lastUrl = url;
+
+  if (!configLoaded && isContentManagerPage()) {
+    refreshConfig();
+    return;
+  }
+
+  scheduleRetry(30);
+}
+
+export function setupMenuOrganizer() {
+  setupThemeSync();
+  injectStyles();
+  refreshConfig();
+
+  const originalPushState = history.pushState;
+  history.pushState = function (...args) {
+    originalPushState.apply(this, args);
+    handleNavigation();
+  };
+
+  const originalReplaceState = history.replaceState;
+  history.replaceState = function (...args) {
+    originalReplaceState.apply(this, args);
+    handleNavigation();
+  };
+
+  window.addEventListener('popstate', () => handleNavigation());
+  window.addEventListener(CONFIG_EVENT, () => {
+    refreshConfig(true);
+  });
+
+  observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type !== 'childList' || mutation.addedNodes.length === 0) continue;
+
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof Element)) continue;
+
+        if (
+          node.querySelector?.('a[href*="/content-manager/collection-types/api::"]') ||
+          (node instanceof HTMLAnchorElement &&
+            node.href?.includes('/content-manager/collection-types/api::'))
+        ) {
+          scheduleRetry(30);
+          return;
+        }
+      }
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+
+  scheduleRetry(100);
+}

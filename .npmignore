@@ -1,0 +1,39 @@
+# Source & dev files (dist/ is what ships)
+admin/src/
+server/src/
+tsconfig.json
+admin/tsconfig.json
+
+# Dev tooling
+.git/
+.github/
+.gitignore
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Tests
+__tests__/
+__mocks__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage/
+jest.config.*
+
+# Dev artifacts
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Docs (keep README.md and LICENSE — they're in "files")
+docs/
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+CHANGELOG.md
+.vscode/
