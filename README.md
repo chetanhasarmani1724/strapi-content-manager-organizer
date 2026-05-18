@@ -34,6 +34,19 @@ the default sidebar becomes a long, unmanageable list.
 
 ---
 
+## Screenshots
+
+### Plugin in Settings
+![Settings](/.github/images/settings.page.png)
+
+### Configure Groups
+![Configure](/.github/images/content.manager.page.dark.png)
+
+### Grouped Sidebar — Dark Mode
+![Dark](/.github/images/content.manager.page.light.png)
+
+---
+
 ## ✨ Features
 
 - 📁 **Group content types** into named, collapsible sections
