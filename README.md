@@ -331,7 +331,7 @@ See [CHANGELOG.md](./CHANGELOG.md)
 
 ## 📄 License
 
-MIT © [Your Name](https://github.com/chetanhasarmani1724)
+MIT © [Chetan Hasarmani](https://github.com/chetanhasarmani1724)
 
 ---
 
