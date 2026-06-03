@@ -251,14 +251,14 @@ var require_server = __commonJS({
   }
 });
 
-// dist/_chunks/SettingsPage-DpQUNeKo.js
-var require_SettingsPage_DpQUNeKo = __commonJS({
-  "dist/_chunks/SettingsPage-DpQUNeKo.js"(exports2) {
+// dist/_chunks/SettingsPage-DsB46c0Z.js
+var require_SettingsPage_DsB46c0Z = __commonJS({
+  "dist/_chunks/SettingsPage-DsB46c0Z.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, Symbol.toStringTag, { value: "Module" });
     var jsxRuntime = require("react/jsx-runtime");
     var React = require("react");
-    var index = require_index_BjpyX5QD();
+    var index = require_index_9h3zNxLt();
     require("react-dom/client");
     require("react-router-dom");
     var styled = require("styled-components");
@@ -794,9 +794,9 @@ var require_SettingsPage_DpQUNeKo = __commonJS({
   }
 });
 
-// dist/_chunks/index-BjpyX5QD.js
-var require_index_BjpyX5QD = __commonJS({
-  "dist/_chunks/index-BjpyX5QD.js"(exports2) {
+// dist/_chunks/index-9h3zNxLt.js
+var require_index_9h3zNxLt = __commonJS({
+  "dist/_chunks/index-9h3zNxLt.js"(exports2) {
     "use strict";
     require("react-dom/client");
     var jsxRuntime = require("react/jsx-runtime");
@@ -89163,7 +89163,6 @@ attempted value: ${formattedValue}
       const response = data;
       return response.contentTypes || [];
     }
-    var STORAGE_KEY = "cmo-state";
     var STYLE_ID = "cmo-styles";
     var MARKER_ATTR = "data-cmo-organized";
     var CONFIG_EVENT = "cmo:config-updated";
@@ -89299,20 +89298,6 @@ attempted value: ${formattedValue}
         window.__moThemeFetchPatched = true;
       }
     }
-    function loadGroupState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : {};
-      } catch {
-        return {};
-      }
-    }
-    function saveGroupState(state) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch {
-      }
-    }
     function stripPrefix(text) {
       return text.replace(/^\d{1,3}\s+/, "");
     }
@@ -89408,8 +89393,8 @@ attempted value: ${formattedValue}
       background-color: var(--mo-neutral100);
     }
 
-    /* Hide flat links only when the menu is actively organized into groups */
-    ol[data-cmo-organized="true"] > li:not(:has(.mo-group)) {
+    /* Hide ungrouped sidebar links instantly \u2014 revealed only inside .mo-group or as direct items */
+    ol:has(> li > a[href*="/content-manager/collection-types/api::"]) > li:not(:has(.mo-group)):not([data-mo-direct]) {
       opacity: 0;
       height: 0;
       overflow: hidden;
@@ -89418,6 +89403,14 @@ attempted value: ${formattedValue}
 
     /* Reveal links once they are inside organized groups */
     .mo-items > li {
+      opacity: 1 !important;
+      height: auto !important;
+      overflow: visible !important;
+      pointer-events: auto !important;
+    }
+
+    /* Reveal single-item groups rendered directly */
+    li[data-mo-direct] {
       opacity: 1 !important;
       height: auto !important;
       overflow: visible !important;
@@ -89463,10 +89456,15 @@ attempted value: ${formattedValue}
     }
     function restoreMenu(ol2) {
       const organizedItems = Array.from(ol2.querySelectorAll(".mo-items > li"));
-      if (organizedItems.length === 0)
+      const directItems = Array.from(ol2.querySelectorAll(":scope > li[data-mo-direct]"));
+      if (organizedItems.length === 0 && directItems.length === 0)
         return;
       while (ol2.firstChild) {
         ol2.removeChild(ol2.firstChild);
+      }
+      for (const item of directItems) {
+        item.removeAttribute("data-mo-direct");
+        ol2.appendChild(item);
       }
       for (const item of organizedItems) {
         ol2.appendChild(item);
@@ -89479,12 +89477,6 @@ attempted value: ${formattedValue}
         return;
       if (force && ol2.getAttribute(MARKER_ATTR)) {
         restoreMenu(ol2);
-      }
-      if (!menuConfig || !menuConfig.groups || menuConfig.groups.length === 0) {
-        if (ol2.getAttribute(MARKER_ATTR)) {
-          restoreMenu(ol2);
-        }
-        return;
       }
       if (ol2.getAttribute(MARKER_ATTR))
         return;
@@ -89505,8 +89497,8 @@ attempted value: ${formattedValue}
         return;
       ol2.setAttribute(MARKER_ATTR, "true");
       stripNumericPrefixes(items);
-      const persistedState = loadGroupState();
       const grouped = /* @__PURE__ */ new Map();
+      const ungrouped = [];
       for (const group of menuConfig.groups) {
         grouped.set(group.id, { group, items: [] });
       }
@@ -89514,6 +89506,8 @@ attempted value: ${formattedValue}
         const group = findGroup(item.singularName);
         if (group) {
           grouped.get(group.id).items.push(item);
+        } else {
+          ungrouped.push(item);
         }
       }
       for (const [, entry] of grouped) {
@@ -89528,7 +89522,7 @@ attempted value: ${formattedValue}
         ol2.removeChild(ol2.firstChild);
       }
       function buildGroup(groupId, label, groupItems, defaultExpanded) {
-        const isExpanded = persistedState[groupId] !== void 0 ? persistedState[groupId] : defaultExpanded;
+        const isExpanded = defaultExpanded;
         const wrapperLi = document.createElement("li");
         wrapperLi.style.listStyle = "none";
         const groupEl = document.createElement("div");
@@ -89554,9 +89548,6 @@ attempted value: ${formattedValue}
         header.addEventListener("click", () => {
           const collapsed = groupEl.classList.toggle("mo-collapsed");
           header.setAttribute("aria-expanded", String(!collapsed));
-          const state = loadGroupState();
-          state[groupId] = !collapsed;
-          saveGroupState(state);
         });
         groupEl.appendChild(header);
         const itemsContainer = document.createElement("ul");
@@ -89581,9 +89572,17 @@ attempted value: ${formattedValue}
       for (const [groupId, entry] of grouped) {
         if (entry.items.length === 0)
           continue;
+        if (entry.items.length === 1) {
+          entry.items[0].li.setAttribute("data-mo-direct", "true");
+          ol2.appendChild(entry.items[0].li);
+          continue;
+        }
         ol2.appendChild(
           buildGroup(groupId, entry.group.label, entry.items, entry.group.defaultExpanded)
         );
+      }
+      if (ungrouped.length > 0) {
+        ol2.appendChild(buildGroup("__other__", "Other", ungrouped, false));
       }
     }
     var observer = null;
@@ -89593,7 +89592,7 @@ attempted value: ${formattedValue}
     function needsReorganization(ol2) {
       const directChildren = ol2.querySelectorAll(":scope > li");
       for (const li2 of directChildren) {
-        if (!li2.querySelector(".mo-group")) {
+        if (!li2.querySelector(".mo-group") && !li2.hasAttribute("data-mo-direct")) {
           const link = li2.querySelector('a[href*="/content-manager/collection-types/api::"]');
           if (link)
             return true;
@@ -89691,7 +89690,7 @@ attempted value: ${formattedValue}
             defaultMessage: "Content Manager Organizer"
           },
           to: PLUGIN_ID,
-          Component: () => Promise.resolve().then(() => require_SettingsPage_DpQUNeKo()),
+          Component: () => Promise.resolve().then(() => require_SettingsPage_DsB46c0Z()),
           permissions: [
             {
               action: `plugin::${PLUGIN_ID}.settings.update`,
@@ -89734,7 +89733,7 @@ attempted value: ${formattedValue}
 var require_admin = __commonJS({
   "dist/admin/index.js"(exports2, module2) {
     "use strict";
-    var index = require_index_BjpyX5QD();
+    var index = require_index_9h3zNxLt();
     module2.exports = index.index;
   }
 });
