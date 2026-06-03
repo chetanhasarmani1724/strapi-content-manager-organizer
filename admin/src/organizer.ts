@@ -2,10 +2,10 @@ import { fetchMenuConfig } from './api';
 import { DEFAULT_MENU_CONFIG } from './menu-config';
 import type { MenuGroup, MenuOrganizerConfig } from './types';
 
-const STORAGE_KEY = 'menu-organizer-state';
-const STYLE_ID = 'menu-organizer-styles';
-const MARKER_ATTR = 'data-mo-organized';
-const CONFIG_EVENT = 'menu-organizer:config-updated';
+const STORAGE_KEY = 'cmo-state';
+const STYLE_ID = 'cmo-styles';
+const MARKER_ATTR = 'data-cmo-organized';
+const CONFIG_EVENT = 'cmo:config-updated';
 
 let menuConfig: MenuOrganizerConfig = DEFAULT_MENU_CONFIG;
 let currentTheme: 'light' | 'dark' | null = null;
