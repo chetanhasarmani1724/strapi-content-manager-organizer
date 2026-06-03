@@ -94,7 +94,7 @@ Every PR should:
 
 ```bash
 # 1. Fork & clone the repository
-git clone https://github.com/<your-username>/strapi-content-manager-organizer.git
+git clone https://github.com/chetanhasarmani1724/strapi-content-manager-organizer.git
 cd strapi-content-manager-organizer
 
 # 2. Install root dependencies (Strapi dev project)
