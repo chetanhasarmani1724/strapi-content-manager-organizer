@@ -2,10 +2,10 @@ import { fetchMenuConfig } from './api';
 import { DEFAULT_MENU_CONFIG } from './menu-config';
 import type { MenuGroup, MenuOrganizerConfig } from './types';
 
-const STORAGE_KEY = 'cmo-state';
-const STYLE_ID = 'cmo-styles';
-const MARKER_ATTR = 'data-cmo-organized';
-const CONFIG_EVENT = 'cmo:config-updated';
+const STORAGE_KEY = 'menu-organizer-state';
+const STYLE_ID = 'menu-organizer-styles';
+const MARKER_ATTR = 'data-mo-organized';
+const CONFIG_EVENT = 'menu-organizer:config-updated';
 
 let menuConfig: MenuOrganizerConfig = DEFAULT_MENU_CONFIG;
 let currentTheme: 'light' | 'dark' | null = null;
@@ -255,8 +255,8 @@ function injectStyles() {
       background-color: var(--mo-neutral100);
     }
 
-    /* Hide flat links only when the menu is actively organized into groups */
-    ol[data-cmo-organized="true"] > li:not(:has(.mo-group)) {
+    /* Hide ungrouped sidebar links instantly — revealed only inside .mo-group or as direct items */
+    ol:has(> li > a[href*="/content-manager/collection-types/api::"]) > li:not(:has(.mo-group)):not([data-mo-direct]) {
       opacity: 0;
       height: 0;
       overflow: hidden;
@@ -265,6 +265,14 @@ function injectStyles() {
 
     /* Reveal links once they are inside organized groups */
     .mo-items > li {
+      opacity: 1 !important;
+      height: auto !important;
+      overflow: visible !important;
+      pointer-events: auto !important;
+    }
+
+    /* Reveal single-item groups rendered directly */
+    li[data-mo-direct] {
       opacity: 1 !important;
       height: auto !important;
       overflow: visible !important;
@@ -323,13 +331,18 @@ function stripNumericPrefixes(items: LinkItem[]) {
 
 function restoreMenu(ol: HTMLElement) {
   const organizedItems = Array.from(ol.querySelectorAll('.mo-items > li')) as HTMLElement[];
+  const directItems = Array.from(ol.querySelectorAll(':scope > li[data-mo-direct]')) as HTMLElement[];
 
-  if (organizedItems.length === 0) return;
+  if (organizedItems.length === 0 && directItems.length === 0) return;
 
   while (ol.firstChild) {
     ol.removeChild(ol.firstChild);
   }
 
+  for (const item of directItems) {
+    item.removeAttribute('data-mo-direct');
+    ol.appendChild(item);
+  }
   for (const item of organizedItems) {
     ol.appendChild(item);
   }
@@ -343,14 +356,6 @@ function reorganizeMenu(force = false) {
 
   if (force && ol.getAttribute(MARKER_ATTR)) {
     restoreMenu(ol);
-  }
-
-  // If there is no pre-configured grouping, use the default Strapi content menu.
-  if (!menuConfig || !menuConfig.groups || menuConfig.groups.length === 0) {
-    if (ol.getAttribute(MARKER_ATTR)) {
-      restoreMenu(ol);
-    }
-    return;
   }
 
   if (ol.getAttribute(MARKER_ATTR)) return;
@@ -375,7 +380,6 @@ function reorganizeMenu(force = false) {
 
   stripNumericPrefixes(items);
 
-  const persistedState = loadGroupState();
   const grouped = new Map<string, { group: MenuGroup; items: LinkItem[] }>();
   const ungrouped: LinkItem[] = [];
 
@@ -412,9 +416,7 @@ function reorganizeMenu(force = false) {
     groupItems: LinkItem[],
     defaultExpanded: boolean
   ): HTMLElement {
-    const isExpanded = persistedState[groupId] !== undefined
-      ? persistedState[groupId]
-      : defaultExpanded;
+     const isExpanded = defaultExpanded;
 
     const wrapperLi = document.createElement('li');
     wrapperLi.style.listStyle = 'none';
@@ -447,9 +449,6 @@ function reorganizeMenu(force = false) {
     header.addEventListener('click', () => {
       const collapsed = groupEl.classList.toggle('mo-collapsed');
       header.setAttribute('aria-expanded', String(!collapsed));
-      const state = loadGroupState();
-      state[groupId] = !collapsed;
-      saveGroupState(state);
     });
 
     groupEl.appendChild(header);
@@ -484,13 +483,24 @@ function reorganizeMenu(force = false) {
 
   for (const [groupId, entry] of grouped) {
     if (entry.items.length === 0) continue;
+
+    // Single-item groups: render directly at top without collapsible wrapper
+    if (entry.items.length === 1) {
+      entry.items[0].li.setAttribute('data-mo-direct', 'true');
+      ol.appendChild(entry.items[0].li);
+      continue;
+    }
+
     ol.appendChild(
       buildGroup(groupId, entry.group.label, entry.items, entry.group.defaultExpanded)
     );
   }
 
-  // "else dont render others" -> We do not append the 'Other' group.
-  // Any ungrouped items will simply not be rendered in the sidebar.
+  if (ungrouped.length > 0) {
+    ol.appendChild(buildGroup('__other__', 'Other', ungrouped, false));
+  }
+
+
 }
 
 let observer: MutationObserver | null = null;
@@ -499,10 +509,10 @@ let lastUrl = '';
 let configLoaded = false;
 
 function needsReorganization(ol: HTMLElement): boolean {
-  // If any direct <li> child does NOT contain a .mo-group, the DOM is ungrouped
+  // If any direct <li> child does NOT contain a .mo-group and is not a direct-rendered item, the DOM is ungrouped
   const directChildren = ol.querySelectorAll(':scope > li');
   for (const li of directChildren) {
-    if (!li.querySelector('.mo-group')) {
+    if (!li.querySelector('.mo-group') && !li.hasAttribute('data-mo-direct')) {
       const link = li.querySelector('a[href*="/content-manager/collection-types/api::"]');
       if (link) return true;
     }
