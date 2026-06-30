@@ -42,5 +42,7 @@ All notable changes to this project will be documented in this file.
 - DOM-based sidebar injection for zero-conflict integration
 - `strapi-plugin build` / `verify` compatible
 
-[Unreleased]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v1.0.1...v2.0.0
+[1.0.1]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/releases/tag/v1.0.0
