@@ -166,7 +166,7 @@ function stripPrefix(text: string): string {
 }
 
 function extractSingularName(href: string): string | null {
-  const match = href.match(/(?:api|plugin)::([^.]+)\./);
+  const match = href.match(/(?:api|plugin)::[^.]+\.([^/&#?]+)/);
   return match ? match[1] : null;
 }
 

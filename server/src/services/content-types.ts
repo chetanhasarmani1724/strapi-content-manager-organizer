@@ -8,11 +8,11 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   getContentTypes() {
     return Object.entries(strapi.contentTypes)
       .filter(([uid, schema]: [string, any]) =>
-        uid.startsWith('api::') &&
+        (uid.startsWith('api::') || (uid.startsWith('plugin::') && uid !== 'plugin::content-manager-organizer.content-manager-configuration')) &&
         (schema.kind === 'collectionType' || schema.kind === 'singleType')
       )
       .map(([uid, schema]: [string, any]) => {
-        const singularName = schema.info?.singularName || uid.match(/^api::([^.]+)\./)?.[1] || uid;
+        const singularName = schema.info?.singularName || uid.match(/(?:api|plugin)::[^.]+\.([^/&#?]+)/)?.[1] || uid;
         const displayName = schema.info?.displayName || singularName;
 
         return {
