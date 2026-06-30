@@ -12,7 +12,7 @@ A **Strapi v5** plugin that lets you organize the Content Manager
 sidebar into **collapsible, labeled groups** — configured entirely 
 through a brand new visual Settings UI with Drag & Drop.
 
-![Content Manager Organizer Demo](./.github/demo/cmo-demo.mp4)
+[![Content Manager Organizer Demo]](https://youtu.be/Tr9d8En5Cxw)
 
 </div>
 
