@@ -10,11 +10,25 @@
 
 A **Strapi v5** plugin that lets you organize the Content Manager 
 sidebar into **collapsible, labeled groups** — configured entirely 
-through a visual Settings UI with no code changes required.
+through a brand new visual Settings UI with Drag & Drop.
 
-![Content Manager Organizer Demo](./docs/demo.gif)
+![Content Manager Organizer Demo](/.github/demo/mo-demo.mp4)
 
 </div>
+
+---
+
+## 🚀 What's New in v2!
+
+We've completely overhauled the plugin with a ton of new features and quality-of-life improvements:
+
+- 🎨 **Brand New UI Dashboard**: A completely redesigned, settings dashboard.
+- 🖱️ **Drag & Drop Ordering**: Visually re-arrange your content types and groups with smooth drag-and-drop mechanics.
+- 📑 **Single Types Support**: You can now organize your **Single Types** into groups! Collection Types and Single Types are cleanly separated in the dashboard.
+- 🔀 **Sort Orders**: Choose exactly how your sidebar renders:
+  - **Alphabetical (Default)**: Automatically sorts groups and items alphabetically.
+  - **Custom Order**: Respects the exact drag-and-drop order you set in the dashboard.
+- 🔍 **Enhanced Search**: Quickly find and filter your content types within the settings dashboard.
 
 ---
 
@@ -27,37 +41,42 @@ the default sidebar becomes a long, unmanageable list.
 | Problem | Solution |
 |---------|----------|
 | 50+ content types in one list | Group into logical sections |
-| Alphabetical order not useful | Custom ordering within groups |
+| Alphabetical order not useful | Custom drag-and-drop ordering within groups |
 | Can't find content types fast | Collapse irrelevant groups |
-| Config lost on redeploy | Saved to database |
+| Single types cluttering sidebar | Group them separately |
+| Config lost on redeploy | Saved safely to the database |
  
 ---
  
 ## Screenshots
  
-### Plugin in Settings
-![Settings](/.github/images/settings.page.png)
+### Interactive Drag & Drop Dashboard
+![Dashboard](/.github/images/cmo-light-theme-dashboard.png)
  
-### Configure Groups
-![Configure](/.github/images/content.manager.page.dark.png)
+### Collection vs Single Types Separation
+![SingleType](/.github/images/com-single-types.png)
  
 ### Grouped Sidebar — Dark Mode
-![Dark](/.github/images/content.manager.page.light.png)
+![GroupedSidebar](/.github/images/cmo-runtime-overlay.png)
+
  
 ---
  
 ## ✨ Features
  
 - 📁 **Group content types** into named, collapsible sections
-- 🔢 **Custom ordering** — drag items up/down within groups
+- 📄 **Single Types support** — organize Collection Types and Single Types separately
+- 🖱️ **Drag & Drop** — re-arrange groups and items visually
+- 🔀 **Custom Sort Orders** — choose between Alphabetical or Custom ordering
+- 🔍 **Real-time Search** — instantly filter content types in the settings
 - 💾 **Persisted to database** — survives redeploys (SQLite, PostgreSQL, MySQL)
-- 🌙 **Dark/Light theme** — auto-detects Strapi theme
-- ♿ **Accessible** — ARIA attributes on all interactive elements
+- 🌙 **Dark/Light theme** — auto-detects Strapi theme perfectly
 - ⚡ **Zero config required** — works out of the box
 - 🎛️ **Visual Settings UI** — no code changes needed
+ 
 ---
  
-## 🚀 Installation
+## 📦 Installation
  
 ### npm
 ```bash
@@ -123,22 +142,18 @@ plugin::content-manager-organizer.content-manager-configuration
  
 ## 📋 Settings Page Reference
  
-### Groups Panel
- 
-| Control | Description |
-|---------|-------------|
-| Group name input | Rename the group |
-| ↑ ↓ arrows | Reorder groups |
-| 🗑️ trash | Delete group |
-| Expanded by default | Whether group starts open |
-| ↑ ↓ on items | Reorder items within group |
-| 🗑️ on items | Remove item from group |
-| Add content type | Dropdown of ungrouped types |
- 
-### Ungrouped Panel
- 
-Shows all content types **not yet assigned** to any group. 
-These still appear in the sidebar under an **"Other"** group at the bottom.
+### Tabs
+Switch between **Collection Types** and **Single Types** to manage them independently.
+
+### Sort Order Toggle
+- **Alphabetical**: Automatically sorts your sidebar groups and items alphabetically.
+- **Custom Order**: Respects the exact drag-and-drop order from the dashboard.
+
+### Drag & Drop Interface
+- **Create Groups**: Click the "New Group" button to create a section.
+- **Drag Items**: Drag content types from the left panel into any group on the right.
+- **Reorder Items**: Drag items up and down within a group.
+- **Reorder Groups**: Drag entire groups up and down to change their order in the sidebar.
  
 ---
  
@@ -152,37 +167,6 @@ The plugin registers two permissions under **Plugins → Content Manager Organiz
 | `settings.update` | Save configuration changes |
  
 Assign these in **Settings → Roles** to control who can configure the plugin.
- 
----
- 
-## 🔄 Config Lifecycle
- 
-```
-Admin visits Content Manager
-         │
-         ▼
-Plugin fetches config from API
-         │
-    ┌────┴────┐
-    │DB has   │ Yes → Use DB config → Group sidebar
-    │config?  │
-    └────┬────┘
-         │ No
-         ▼
-Use empty default → Show normal Strapi sidebar
-         │
-         ▼
-Admin goes to Settings → Content Manager Organizer
-         │
-         ▼
-Creates groups, assigns content types, saves
-         │
-         ▼
-Config saved to DB → Sidebar updates instantly
-         │
-         ▼
-Next time any admin visits → DB config used ✓
-```
  
 ---
  
@@ -208,19 +192,29 @@ export default {
             key: 'main',
             config: {
               stripNumericPrefix: true,
+              sortBy: 'alphabetical',
               groups: [
                 {
                   id: 'products',
                   label: 'Products',
                   defaultExpanded: true,
+                  kind: 'collectionType',
                   items: ['product', 'category'],
                 },
                 {
                   id: 'blog',
                   label: 'Blog',
                   defaultExpanded: false,
+                  kind: 'collectionType',
                   items: ['article', 'tag', 'author'],
                 },
+                {
+                  id: 'settings',
+                  label: 'Global Settings',
+                  defaultExpanded: true,
+                  kind: 'singleType',
+                  items: ['site-config', 'footer'],
+                }
               ],
             },
           },
@@ -237,6 +231,6 @@ export default {
 MIT © [Chetan Hasarmani](https://github.com/chetanhasarmani1724)
  
 ## 🙏 Acknowledgements
-
+ 
 Built with [Strapi Plugin SDK](https://docs.strapi.io/dev-docs/plugins/development/create-a-plugin) 
 and [Strapi Design System](https://design-system.strapi.io/).

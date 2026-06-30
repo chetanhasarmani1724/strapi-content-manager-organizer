@@ -1,7 +1,7 @@
 {
   "name": "strapi-plugin-content-manager-organizer",
-  "version": "1.0.1",
-  "description": "Organize Strapi Content Manager collection types into collapsible grouped sections",
+  "version": "2.0.0",
+  "description": "Organize Strapi Content Manager collection and single types into collapsible groups with drag-and-drop custom sorting",
   "license": "MIT",
   "author": {
     "name": "Chetan Hasarmani",
@@ -22,13 +22,17 @@
     "content-manager",
     "sidebar",
     "collection-types",
+    "single-types",
     "organizer",
-    "groups"
+    "groups",
+    "custom-sorting",
+    "drag-and-drop",
+    "rearrange"
   ],
   "strapi": {
     "name": "content-manager-organizer",
     "displayName": "Content Manager Organizer",
-    "description": "Group Content Manager collection types into collapsible sections",
+    "description": "Organize Content Manager collection and single types into collapsible groups with custom sorting",
     "kind": "plugin"
   },
   "main": "./dist/server/index.js",
@@ -80,5 +84,10 @@
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2"
   }
 }

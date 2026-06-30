@@ -27,23 +27,40 @@ function normalizeId(value: string, existing: Set<string>) {
   return id;
 }
 
-function normalizeConfig(input: Partial<MenuOrganizerConfig> | null | undefined): MenuOrganizerConfig {
+function normalizeConfig(input: Partial<MenuOrganizerConfig> | null | undefined, strapi: Core.Strapi): MenuOrganizerConfig {
   const existingIds = new Set<string>();
   const seenItems = new Set<string>();
   const groups = Array.isArray(input?.groups) ? input!.groups : [];
 
+  const kindLookup = new Map<string, string>();
+  for (const [uid, schema] of Object.entries(strapi.contentTypes) as [string, any][]) {
+    if (uid.startsWith('api::') && (schema.kind === 'collectionType' || schema.kind === 'singleType')) {
+      const singularName = schema.info?.singularName || uid.match(/^api::([^.]+)\./)?.[1] || uid;
+      kindLookup.set(singularName, schema.kind);
+    }
+  }
+
   return {
     stripNumericPrefix: input?.stripNumericPrefix !== false,
+    sortBy: input?.sortBy === 'custom' ? 'custom' : 'alphabetical',
     groups: groups
       .map((group) => {
         const label = typeof group.label === 'string' && group.label.trim() ? group.label.trim() : 'Group';
         const id = normalizeId(typeof group.id === 'string' && group.id.trim() ? group.id : label, existingIds);
+        const groupKind = group.kind === 'singleType' ? 'singleType' as const : 'collectionType' as const;
+
         const items = Array.isArray(group.items)
           ? group.items
             .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
             .map((item) => item.trim())
             .filter((item) => {
               if (seenItems.has(item)) return false;
+
+              const actualKind = kindLookup.get(item);
+              if (actualKind && actualKind !== groupKind) {
+                return false;
+              }
+
               seenItems.add(item);
               return true;
             })
@@ -53,6 +70,7 @@ function normalizeConfig(input: Partial<MenuOrganizerConfig> | null | undefined)
           id,
           label,
           defaultExpanded: group.defaultExpanded === true,
+          kind: groupKind,
           items,
         };
       })
@@ -70,11 +88,11 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       return cloneDefaultConfig();
     }
 
-    return normalizeConfig(result.config as MenuOrganizerConfig);
+    return normalizeConfig(result.config as MenuOrganizerConfig, strapi);
   },
 
   async saveConfig(config: MenuOrganizerConfig): Promise<MenuOrganizerConfig> {
-    const normalized = normalizeConfig(config);
+    const normalized = normalizeConfig(config, strapi);
     const existing = await strapi.db.query(UID).findOne({
       where: { key: CONFIG_KEY },
     });

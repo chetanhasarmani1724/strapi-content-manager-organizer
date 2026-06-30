@@ -7,6 +7,9 @@ const STYLE_ID = 'cmo-styles';
 const MARKER_ATTR = 'data-cmo-organized';
 const CONFIG_EVENT = 'cmo:config-updated';
 
+const CONTENT_LINK_SELECTOR =
+  'a[href*="/content-manager/collection-types/"], a[href*="/content-manager/single-types/"]';
+
 let menuConfig: MenuOrganizerConfig = DEFAULT_MENU_CONFIG;
 let currentTheme: 'light' | 'dark' | null = null;
 let themeObserver: MutationObserver | null = null;
@@ -163,7 +166,7 @@ function stripPrefix(text: string): string {
 }
 
 function extractSingularName(href: string): string | null {
-  const match = href.match(/api::([^.]+)\./);
+  const match = href.match(/(?:api|plugin)::([^.]+)\./);
   return match ? match[1] : null;
 }
 
@@ -172,6 +175,10 @@ function findGroup(singularName: string): MenuGroup | null {
     if (group.items.includes(singularName)) return group;
   }
   return null;
+}
+
+function cleanLabel(label: string): string {
+  return label.replace(/^[^\p{L}\p{N}]+/u, '').trim();
 }
 
 function injectStyles() {
@@ -188,15 +195,13 @@ function injectStyles() {
       cursor: pointer;
       width: 100%;
       border: none;
-      padding: 0;
       background: transparent;
       display: flex;
       align-items: center;
+      gap: 6px;
       border-radius: 4px;
-      padding-left: 12px;
-      padding-right: 12px;
-      padding-top: 8px;
-      padding-bottom: 8px;
+      padding: 6px 8px;
+      text-align: left;
     }
 
     .mo-header:hover {
@@ -204,10 +209,11 @@ function injectStyles() {
     }
 
     .mo-chevron {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.5s;
+      transition: transform 0.3s ease;
       color: var(--mo-neutral500);
     }
 
@@ -216,16 +222,19 @@ function injectStyles() {
     }
 
     .mo-label {
-      padding-left: 8px;
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: left;
       font-weight: 600;
-      font-size: 1.4rem;
-      line-height: 1.43;
+      font-size: 1.2rem;
+      line-height: 1.2;
       color: var(--mo-neutral800);
     }
 
     .mo-badge {
-      margin-left: auto;
-      padding: 0 6px;
+      flex-shrink: 0;
+      margin-left: 8px;
+      padding: 0 8px;
       font-size: 1.1rem;
       font-weight: 600;
       line-height: 2rem;
@@ -255,8 +264,8 @@ function injectStyles() {
       background-color: var(--mo-neutral100);
     }
 
-    /* Hide ungrouped sidebar links instantly — revealed only inside .mo-group or as direct items */
-    ol:has(> li > a[href*="/content-manager/collection-types/api::"]) > li:not(:has(.mo-group)):not([data-mo-direct]) {
+    html:not([data-mo-searching]) ol:has(a[href*="/content-manager/collection-types/api::"]) > li:has(a[href*="/api::"]):not(:has(.mo-group)):not([data-mo-direct]),
+    html:not([data-mo-searching]) ol:has(a[href*="/content-manager/single-types/api::"]) > li:has(a[href*="/api::"]):not(:has(.mo-group)):not([data-mo-direct]) {
       opacity: 0;
       height: 0;
       overflow: hidden;
@@ -293,19 +302,18 @@ interface LinkItem {
   singularName: string;
 }
 
-function findCollectionTypesOl(): HTMLElement | null {
-  const links = document.querySelectorAll(
-    'a[href*="/content-manager/collection-types/api::"]'
-  );
-  if (links.length < 3) return null;
+function displayText(item: LinkItem): string {
+  return (item.link.textContent || item.singularName).replace(/\s+/g, ' ').trim();
+}
 
-  const ol = links[0].closest('ol');
-  if (!ol) return null;
-
-  const olLinks = ol.querySelectorAll('a[href*="/content-manager/collection-types/api::"]');
-  if (olLinks.length < links.length * 0.8) return null;
-
-  return ol as HTMLElement;
+function findContentTypeOls(): HTMLElement[] {
+  const links = document.querySelectorAll(CONTENT_LINK_SELECTOR);
+  const ols = new Set<HTMLElement>();
+  links.forEach((a) => {
+    const ol = (a as HTMLElement).closest('ol');
+    if (ol) ols.add(ol as HTMLElement);
+  });
+  return Array.from(ols);
 }
 
 function stripNumericPrefixes(items: LinkItem[]) {
@@ -351,20 +359,23 @@ function restoreMenu(ol: HTMLElement) {
 }
 
 function reorganizeMenu(force = false) {
-  const ol = findCollectionTypesOl();
-  if (!ol) return;
+  if (!configLoaded) return;
+  for (const ol of findContentTypeOls()) {
+    reorganizeOl(ol, force);
+  }
+}
 
-  if (force && ol.getAttribute(MARKER_ATTR)) {
+function reorganizeOl(ol: HTMLElement, force = false) {
+  if (force) {
     restoreMenu(ol);
+    ol.removeAttribute(MARKER_ATTR);
   }
 
   if (ol.getAttribute(MARKER_ATTR)) return;
 
   const items: LinkItem[] = [];
   ol.querySelectorAll(':scope > li').forEach((li) => {
-    const link = li.querySelector(
-      'a[href*="/content-manager/collection-types/api::"]'
-    ) as HTMLAnchorElement;
+    const link = li.querySelector(CONTENT_LINK_SELECTOR) as HTMLAnchorElement;
     if (!link) return;
 
     const href = link.getAttribute('href') || '';
@@ -374,7 +385,7 @@ function reorganizeMenu(force = false) {
     items.push({ li: li as HTMLElement, link, singularName });
   });
 
-  if (items.length < 3) return;
+  if (items.length === 0) return;
 
   ol.setAttribute(MARKER_ATTR, 'true');
 
@@ -396,11 +407,21 @@ function reorganizeMenu(force = false) {
     }
   }
 
-  for (const [, entry] of grouped) {
-    entry.items.sort((a, b) =>
-      entry.group.items.indexOf(a.singularName) - entry.group.items.indexOf(b.singularName)
-    );
+  if (menuConfig.sortBy === 'custom') {
+    for (const [, entry] of grouped) {
+      entry.items.sort((a, b) => {
+        const indexA = entry.group.items.indexOf(a.singularName);
+        const indexB = entry.group.items.indexOf(b.singularName);
+        return indexA - indexB;
+      });
+    }
+  } else {
+    for (const [, entry] of grouped) {
+      entry.items.sort((a, b) => displayText(a).localeCompare(displayText(b), undefined, { sensitivity: 'base' }));
+    }
   }
+
+  ungrouped.sort((a, b) => displayText(a).localeCompare(displayText(b), undefined, { sensitivity: 'base' }));
 
   for (const item of items) {
     item.li.remove();
@@ -416,7 +437,7 @@ function reorganizeMenu(force = false) {
     groupItems: LinkItem[],
     defaultExpanded: boolean
   ): HTMLElement {
-     const isExpanded = defaultExpanded;
+    const isExpanded = defaultExpanded;
 
     const wrapperLi = document.createElement('li');
     wrapperLi.style.listStyle = 'none';
@@ -481,23 +502,28 @@ function reorganizeMenu(force = false) {
     return wrapperLi;
   }
 
-  for (const [groupId, entry] of grouped) {
+  const sortedEntries = menuConfig.sortBy === 'custom'
+    ? [...grouped.values()]
+    : [...grouped.values()].sort((a, b) =>
+      cleanLabel(a.group.label).localeCompare(cleanLabel(b.group.label), undefined, { sensitivity: 'base' })
+    );
+
+  for (const entry of sortedEntries) {
     if (entry.items.length === 0) continue;
 
-    // Single-item groups: render directly at top without collapsible wrapper
-    if (entry.items.length === 1) {
+    if (!searching && entry.items.length === 1) {
       entry.items[0].li.setAttribute('data-mo-direct', 'true');
       ol.appendChild(entry.items[0].li);
       continue;
     }
 
-    ol.appendChild(
-      buildGroup(groupId, entry.group.label, entry.items, entry.group.defaultExpanded)
-    );
+    const expanded = searching ? true : entry.group.defaultExpanded;
+    ol.appendChild(buildGroup(entry.group.id, entry.group.label, entry.items, expanded));
   }
 
-  if (ungrouped.length > 0) {
-    ol.appendChild(buildGroup('__other__', 'Other', ungrouped, false));
+  for (const item of ungrouped) {
+    item.li.setAttribute('data-mo-direct', 'true');
+    ol.appendChild(item.li);
   }
 
 
@@ -507,13 +533,13 @@ let observer: MutationObserver | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let lastUrl = '';
 let configLoaded = false;
+let searching = false;
 
 function needsReorganization(ol: HTMLElement): boolean {
-  // If any direct <li> child does NOT contain a .mo-group and is not a direct-rendered item, the DOM is ungrouped
   const directChildren = ol.querySelectorAll(':scope > li');
   for (const li of directChildren) {
     if (!li.querySelector('.mo-group') && !li.hasAttribute('data-mo-direct')) {
-      const link = li.querySelector('a[href*="/content-manager/collection-types/api::"]');
+      const link = li.querySelector(CONTENT_LINK_SELECTOR);
       if (link) return true;
     }
   }
@@ -521,12 +547,52 @@ function needsReorganization(ol: HTMLElement): boolean {
 }
 
 function tryReorganize() {
+  if (searching) return;
+  if (!configLoaded) return;
   if (!window.location.pathname.includes('/content-manager/')) return;
 
-  const ol = findCollectionTypesOl();
-  if (ol && needsReorganization(ol)) {
-    reorganizeMenu(true);
+  for (const ol of findContentTypeOls()) {
+    if (needsReorganization(ol)) {
+      reorganizeOl(ol, true);
+    }
   }
+}
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSearchRegroup(delay = 160) {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    reorganizeMenu(true);
+    if (!searching) {
+      document.documentElement.removeAttribute('data-mo-searching');
+    }
+  }, delay);
+}
+
+function isSidebarSearchInput(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLInputElement)) return false;
+  let el: HTMLElement | null = target.parentElement;
+  for (let i = 0; i < 8 && el; i++, el = el.parentElement) {
+    if (el.querySelector?.(CONTENT_LINK_SELECTOR)) return true;
+  }
+  return false;
+}
+
+function handleSearchInput(event: Event) {
+  const target = event.target;
+  if (!isSidebarSearchInput(target)) return;
+
+  for (const ol of findContentTypeOls()) {
+    restoreMenu(ol);
+    ol.removeAttribute(MARKER_ATTR);
+  }
+
+  searching = (target as HTMLInputElement).value.trim().length > 0;
+  if (searching) {
+    document.documentElement.setAttribute('data-mo-searching', 'true');
+  }
+  scheduleSearchRegroup();
 }
 
 function isContentManagerPage() {
@@ -538,14 +604,16 @@ async function refreshConfig(force = false) {
 
   menuConfig = await fetchMenuConfig();
   configLoaded = true;
-  const ol = findCollectionTypesOl();
 
-  if (force && ol) {
+  if (force) {
     reorganizeMenu(true);
     return;
   }
 
-  scheduleRetry(100);
+  scheduleRetry(50);
+  setTimeout(() => scheduleRetry(0), 300);
+  setTimeout(() => scheduleRetry(0), 900);
+  setTimeout(() => scheduleRetry(0), 1800);
 }
 
 function scheduleRetry(delay = 30) {
@@ -588,6 +656,8 @@ export function setupMenuOrganizer() {
     refreshConfig(true);
   });
 
+  document.addEventListener('input', handleSearchInput, true);
+
   observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type !== 'childList' || mutation.addedNodes.length === 0) continue;
@@ -596,9 +666,10 @@ export function setupMenuOrganizer() {
         if (!(node instanceof Element)) continue;
 
         if (
-          node.querySelector?.('a[href*="/content-manager/collection-types/api::"]') ||
+          node.querySelector?.(CONTENT_LINK_SELECTOR) ||
           (node instanceof HTMLAnchorElement &&
-            node.href?.includes('/content-manager/collection-types/api::'))
+            (node.href?.includes('/content-manager/collection-types/api::') ||
+              node.href?.includes('/content-manager/single-types/api::')))
         ) {
           scheduleRetry(30);
           return;

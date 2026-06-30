@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.0.0] - 2026-06-30
+
+### Added
+- **Single Types Support:** Added full support for organizing Single Types alongside Collection Types.
+- **Drag & Drop Interface:** Completely revamped the Settings UI with a modern, drag-and-drop system using `@dnd-kit`.
+- **Separate Tabs:** Added dedicated tabs in Settings for managing Collection Types and Single Types independently.
+- **Group Management Modals:** Creating and renaming groups is now handled via clean modal dialogs.
+- **Configurable "Ungrouped" Items:** The "Other" group is now fully customizable (label and expanded state).
+- **Search Support:** Sidebar search now flawlessly works with groups without breaking the DOM.
+- **Alphabetical Sorting:** Groups and items now sort alphabetically by default.
+- **Group Statistics:** Group cards now display item counts.
+- **UX Improvements:** Already assigned items in the settings page are now shown as disabled (grayed out) with a helpful tooltip.
+
 ## [1.0.1] - 2026-06-03
 ### Fixed
 - Sidebar groups now always reset to `defaultExpanded` config values on navigation — removed localStorage persistence for expand/collapse state
