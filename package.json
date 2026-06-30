@@ -1,6 +1,6 @@
 {
   "name": "strapi-plugin-content-manager-organizer",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Organize Strapi Content Manager collection and single types into collapsible groups with drag-and-drop custom sorting",
   "license": "MIT",
   "author": {

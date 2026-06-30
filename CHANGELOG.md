@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.0.1] - 2026-06-30
+
+### Fixed
+- **Plugin Content Types Visibility:** Fixed extraction and processing logic in the sidebar organizer to prevent non-API content types (like `User` from the `users-permissions` plugin) from being hidden.
+- **Plugin Content Types Grouping:** Enabled grouping support for plugin-provided content types in the Settings dashboard.
+
 ## [2.0.0] - 2026-06-30
 
 ### Added
@@ -42,7 +48,8 @@ All notable changes to this project will be documented in this file.
 - DOM-based sidebar injection for zero-conflict integration
 - `strapi-plugin build` / `verify` compatible
 
-[Unreleased]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/chetanhasarmani1724/strapi-content-manager-organizer/releases/tag/v1.0.0
