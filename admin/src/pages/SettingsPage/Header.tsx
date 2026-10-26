@@ -1,6 +1,8 @@
+import { useIntl } from 'react-intl';
 import { Flex, Typography, Button } from '@strapi/design-system';
 import { HeaderBar, HeaderIcon, UnsavedBadge, UnsavedDot } from './styles';
 import { FolderIconBlue } from './icons';
+import { getTrad } from '../../utils/getTrad';
 
 interface HeaderProps {
   hasChanges: boolean;
@@ -10,6 +12,8 @@ interface HeaderProps {
 }
 
 export function Header({ hasChanges, saving, onReset, onSave }: HeaderProps) {
+  const { formatMessage } = useIntl();
+
   return (
     <HeaderBar>
       <div>
@@ -19,10 +23,13 @@ export function Header({ hasChanges, saving, onReset, onSave }: HeaderProps) {
           </HeaderIcon>
           <Flex direction="column" alignItems="flex-start" gap={1}>
             <Typography variant="alpha" textColor="neutral800">
-              Content Manager Organizer
+              {formatMessage({ id: getTrad('header.title'), defaultMessage: 'Content Manager Organizer' })}
             </Typography>
             <Typography variant="epsilon" textColor="neutral500">
-              Organize Collection Types and Single Types into custom sidebar groups.
+              {formatMessage({
+                id: getTrad('header.subtitle'),
+                defaultMessage: 'Organize Collection Types and Single Types into custom sidebar groups.',
+              })}
             </Typography>
           </Flex>
         </Flex>
@@ -30,14 +37,14 @@ export function Header({ hasChanges, saving, onReset, onSave }: HeaderProps) {
       <Flex gap={3} alignItems="center">
         {hasChanges && (
           <UnsavedBadge>
-            <UnsavedDot /> Unsaved changes
+            <UnsavedDot /> {formatMessage({ id: getTrad('header.unsaved'), defaultMessage: 'Unsaved changes' })}
           </UnsavedBadge>
         )}
         <Button variant="tertiary" onClick={onReset} disabled={!hasChanges}>
-          Reset
+          {formatMessage({ id: getTrad('header.reset'), defaultMessage: 'Reset' })}
         </Button>
         <Button onClick={onSave} loading={saving} disabled={!hasChanges}>
-          Save Configuration
+          {formatMessage({ id: getTrad('header.save'), defaultMessage: 'Save Configuration' })}
         </Button>
       </Flex>
     </HeaderBar>

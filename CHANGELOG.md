@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 
+## [Unreleased]
+
+### Added
+- **Translations:** The settings page, modals, buttons and notifications are now localized via `react-intl`, with English, Spanish, Arabic and Turkish translations registered through `registerTrads`.
+
 ## [2.0.3] - 2026-08-18
 
 ### Fixed

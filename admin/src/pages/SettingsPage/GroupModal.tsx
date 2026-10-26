@@ -1,5 +1,7 @@
+import { useIntl } from 'react-intl';
 import { Flex, Typography, Button, Checkbox, Modal, Field } from '@strapi/design-system';
 import { ModalInput } from './styles';
+import { getTrad } from '../../utils/getTrad';
 
 interface GroupModalProps {
   open: boolean;
@@ -22,20 +24,24 @@ export function GroupModal({
   setExpanded,
   onSubmit,
 }: GroupModalProps) {
+  const { formatMessage } = useIntl();
+
   return (
     <Modal.Root open={open} onOpenChange={onOpenChange}>
       <Modal.Content>
         <Modal.Header>
-          <Modal.Title>{mode === 'create' ? 'Create Group' : 'Rename Group'}</Modal.Title>
+          <Modal.Title>{mode === 'create'
+              ? formatMessage({ id: getTrad('modal.createTitle'), defaultMessage: 'Create Group' })
+              : formatMessage({ id: getTrad('modal.renameTitle'), defaultMessage: 'Rename Group' })}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Flex direction="column" gap={5}>
             <Field.Root>
-              <Field.Label>Group Name</Field.Label>
+              <Field.Label>{formatMessage({ id: getTrad('modal.name'), defaultMessage: 'Group Name' })}</Field.Label>
               <ModalInput
                 value={groupName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGroupName(e.target.value)}
-                placeholder="e.g. Products, Blog, HR..."
+                placeholder={formatMessage({ id: getTrad('modal.namePlaceholder'), defaultMessage: 'e.g. Products, Blog, HR...' })}
                 autoFocus
                 onKeyDown={(e: React.KeyboardEvent) => {
                   if (e.key === 'Enter') onSubmit();
@@ -47,16 +53,20 @@ export function GroupModal({
                 checked={expanded}
                 onCheckedChange={(checked) => setExpanded(checked === true)}
               />
-              <Typography textColor="neutral800">Expanded by default</Typography>
+              <Typography textColor="neutral800">
+                {formatMessage({ id: getTrad('modal.expanded'), defaultMessage: 'Expanded by default' })}
+              </Typography>
             </Flex>
           </Flex>
         </Modal.Body>
         <Modal.Footer>
           <Modal.Close>
-            <Button variant="tertiary">Cancel</Button>
+            <Button variant="tertiary">{formatMessage({ id: getTrad('modal.cancel'), defaultMessage: 'Cancel' })}</Button>
           </Modal.Close>
           <Button onClick={onSubmit} disabled={!groupName.trim()}>
-            {mode === 'create' ? 'Create' : 'Save'}
+            {mode === 'create'
+              ? formatMessage({ id: getTrad('modal.create'), defaultMessage: 'Create' })
+              : formatMessage({ id: getTrad('modal.save'), defaultMessage: 'Save' })}
           </Button>
         </Modal.Footer>
       </Modal.Content>

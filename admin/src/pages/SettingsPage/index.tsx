@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useIntl } from 'react-intl';
 import { Main } from '@strapi/design-system';
 import { useNotification, Page as PageHelper } from '@strapi/admin/strapi-admin';
 import {
@@ -15,6 +16,7 @@ import {
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
 import { Drag } from '@strapi/icons';
 
+import { getTrad } from '../../utils/getTrad';
 import { fetchMenuConfig, fetchMenuContentTypes, saveMenuConfig } from '../../api';
 import type { MenuContentTypeOption, MenuGroup, MenuOrganizerConfig } from '../../types';
 
@@ -68,6 +70,7 @@ export default function SettingsPage() {
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const { toggleNotification } = useNotification();
+  const { formatMessage } = useIntl();
   const savedConfigRef = useRef<string>('');
 
   const sensors = useSensors(
@@ -102,7 +105,7 @@ export default function SettingsPage() {
         setContentTypes(nextCts);
       })
       .catch((err) => {
-        if (mounted) setError(err?.message || 'Unable to load settings');
+        if (mounted) setError(err?.message || formatMessage({ id: getTrad('error.load'), defaultMessage: 'Unable to load settings' }));
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -263,8 +266,11 @@ export default function SettingsPage() {
 
       toggleNotification({
         type: 'success',
-        title: 'Success',
-        message: `Successfully added to ${targetGroup?.label}`
+        title: formatMessage({ id: getTrad('notification.success'), defaultMessage: 'Success' }),
+        message: formatMessage(
+          { id: getTrad('notification.added'), defaultMessage: 'Successfully added to {group}' },
+          { group: targetGroup?.label }
+        )
       });
 
       return;
@@ -322,11 +328,19 @@ export default function SettingsPage() {
       setConfig(saved);
       savedConfigRef.current = JSON.stringify(saved);
       window.dispatchEvent(new CustomEvent(eventName, { detail: saved }));
-      toggleNotification({ type: 'success', title: 'Saved', message: 'Configuration saved successfully' });
+      toggleNotification({
+        type: 'success',
+        title: formatMessage({ id: getTrad('notification.saved'), defaultMessage: 'Saved' }),
+        message: formatMessage({ id: getTrad('notification.savedMessage'), defaultMessage: 'Configuration saved successfully' }),
+      });
     } catch (err: any) {
-      const message = err?.message || 'Unable to save settings';
+      const message = err?.message || formatMessage({ id: getTrad('error.save'), defaultMessage: 'Unable to save settings' });
       setError(message);
-      toggleNotification({ type: 'danger', title: 'Error', message });
+      toggleNotification({
+        type: 'danger',
+        title: formatMessage({ id: getTrad('notification.error'), defaultMessage: 'Error' }),
+        message,
+      });
     } finally {
       setSaving(false);
     }

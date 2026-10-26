@@ -1,3 +1,4 @@
+import { useIntl } from 'react-intl';
 import { Flex, Typography } from '@strapi/design-system';
 import { Search, Cross, Filter, Drag, CheckCircle } from '@strapi/icons';
 import { useSortable } from '@dnd-kit/sortable';
@@ -5,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { MenuContentTypeOption } from '../../types';
 import { TypeIcon } from './icons';
+import { getTrad } from '../../utils/getTrad';
 import {
   LeftPanelContainer,
   PanelHeader,
@@ -34,6 +36,7 @@ export function AvailableTypeRow({
   ct: MenuContentTypeOption;
   assignedGroup: string | null;
 }) {
+  const { formatMessage } = useIntl();
   const isAssigned = !!assignedGroup;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `available-${ct.singularName}`,
@@ -51,7 +54,14 @@ export function AvailableTypeRow({
       ref={setNodeRef}
       style={style}
       $assigned={isAssigned}
-      title={isAssigned ? `Already in "${assignedGroup}"` : undefined}
+      title={
+        isAssigned
+          ? formatMessage(
+              { id: getTrad('available.assignedTitle'), defaultMessage: 'Already in "{group}"' },
+              { group: assignedGroup }
+            )
+          : undefined
+      }
       {...(isAssigned ? {} : listeners)}
       {...(isAssigned ? {} : attributes)}
     >
@@ -77,7 +87,10 @@ export function AvailableTypeRow({
           </Typography>
           {isAssigned && (
             <Typography textColor="neutral500" variant="pi" style={{ fontSize: '1.1rem' }}>
-              In {assignedGroup} group
+              {formatMessage(
+                { id: getTrad('available.inGroup'), defaultMessage: 'In {group} group' },
+                { group: assignedGroup }
+              )}
             </Typography>
           )}
         </Flex>
@@ -107,11 +120,15 @@ export function LeftPanel({
   filteredContentTypes,
   assignedMap,
 }: LeftPanelProps) {
+  const { formatMessage } = useIntl();
+
   return (
     <LeftPanelContainer>
       <PanelHeader>
         <Typography fontWeight="bold" textColor="neutral800">
-          Available {activeTab === 'collectionType' ? 'Collection' : 'Single'} Types
+          {activeTab === 'collectionType'
+            ? formatMessage({ id: getTrad('available.title.collectionType'), defaultMessage: 'Available Collection Types' })
+            : formatMessage({ id: getTrad('available.title.singleType'), defaultMessage: 'Available Single Types' })}
         </Typography>
         <CountBadge>{filteredContentTypes.length}</CountBadge>
       </PanelHeader>
@@ -122,7 +139,11 @@ export function LeftPanel({
             <Search />
           </SearchIconWrapper>
           <SearchInput
-            placeholder={`Search ${activeTab === 'collectionType' ? 'collection' : 'single'} types...`}
+            placeholder={
+              activeTab === 'collectionType'
+                ? formatMessage({ id: getTrad('available.search.collectionType'), defaultMessage: 'Search collection types...' })
+                : formatMessage({ id: getTrad('available.search.singleType'), defaultMessage: 'Search single types...' })
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -152,7 +173,7 @@ export function LeftPanel({
       <LeftPanelFooter>
         <DragInstructionBox>
           <Typography textColor="neutral500" variant="pi">
-            Drag items to groups on the right
+            {formatMessage({ id: getTrad('available.hint'), defaultMessage: 'Drag items to groups on the right' })}
           </Typography>
           <InfoIcon>i</InfoIcon>
         </DragInstructionBox>

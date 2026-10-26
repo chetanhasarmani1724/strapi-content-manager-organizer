@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useIntl } from 'react-intl';
 import { Flex, Typography } from '@strapi/design-system';
 import { IconButton } from '@strapi/design-system';
 import { Trash, More, Pencil, Drag } from '@strapi/icons';
@@ -6,6 +7,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { MenuGroup } from '../../types';
+import { getTrad } from '../../utils/getTrad';
 import { FolderIconSmallBlue, ChevronSvg, TypeIcon, EmptyGroupSvg } from './icons';
 import {
   GroupCardWrapper,
@@ -37,6 +39,7 @@ export function SortableGroupItem({
   kind: 'collectionType' | 'singleType';
   onRemove: () => void;
 }) {
+  const { formatMessage } = useIntl();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,7 +60,12 @@ export function SortableGroupItem({
           {label}
         </Typography>
       </Flex>
-      <IconButton label="Remove" withTooltip={false} onClick={onRemove} variant="ghost">
+      <IconButton
+        label={formatMessage({ id: getTrad('group.removeItem'), defaultMessage: 'Remove' })}
+        withTooltip={false}
+        onClick={onRemove}
+        variant="ghost"
+      >
         <Trash />
       </IconButton>
     </ItemRow>
@@ -84,6 +92,7 @@ export function SortableGroupCard({
   onDeleteGroup,
   onRenameGroup,
 }: SortableGroupCardProps) {
+  const { formatMessage } = useIntl();
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -121,13 +130,16 @@ export function SortableGroupCard({
             {group.label}
           </Typography>
           <GroupBadge>
-            {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
+            {formatMessage(
+              { id: getTrad('group.items'), defaultMessage: '{count, plural, one {# item} other {# items}}' },
+              { count: group.items.length }
+            )}
           </GroupBadge>
         </Flex>
         <Flex alignItems="center" gap={1}>
           <OverflowMenuWrapper ref={menuRef}>
             <IconButton
-              label="Actions"
+              label={formatMessage({ id: getTrad('group.actions'), defaultMessage: 'Actions' })}
               withTooltip={false}
               variant="ghost"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -142,7 +154,7 @@ export function SortableGroupCard({
                     onRenameGroup(group.id);
                   }}
                 >
-                  <Pencil /> Rename
+                  <Pencil /> {formatMessage({ id: getTrad('group.rename'), defaultMessage: 'Rename' })}
                 </OverflowMenuItem>
                 <OverflowMenuItem
                   onClick={() => {
@@ -151,7 +163,7 @@ export function SortableGroupCard({
                   }}
                   $danger
                 >
-                  <Trash /> Delete
+                  <Trash /> {formatMessage({ id: getTrad('group.delete'), defaultMessage: 'Delete' })}
                 </OverflowMenuItem>
               </OverflowMenu>
             )}
@@ -167,8 +179,14 @@ export function SortableGroupCard({
           {group.items.length === 0 ? (
             <EmptyGroupArea>
               <EmptyGroupSvg />
-              <EmptyGroupText>Drop {group.kind === 'singleType' ? 'single' : 'collection'} types here</EmptyGroupText>
-              <EmptyGroupSubText>or drag from the left panel</EmptyGroupSubText>
+              <EmptyGroupText>
+                {group.kind === 'singleType'
+                  ? formatMessage({ id: getTrad('group.drop.singleType'), defaultMessage: 'Drop single types here' })
+                  : formatMessage({ id: getTrad('group.drop.collectionType'), defaultMessage: 'Drop collection types here' })}
+              </EmptyGroupText>
+              <EmptyGroupSubText>
+                {formatMessage({ id: getTrad('group.dropHint'), defaultMessage: 'or drag from the left panel' })}
+              </EmptyGroupSubText>
             </EmptyGroupArea>
           ) : (
             <SortableContext items={group.items} strategy={verticalListSortingStrategy}>

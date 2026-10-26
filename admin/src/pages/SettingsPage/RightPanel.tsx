@@ -1,9 +1,11 @@
+import { useIntl } from 'react-intl';
 import { Flex, Typography, Button } from '@strapi/design-system';
 import { Plus } from '@strapi/icons';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { MenuGroup } from '../../types';
 import { SortableGroupCard } from './SortableGroupCard';
 import { FolderIconSmallBlue } from './icons';
+import { getTrad } from '../../utils/getTrad';
 import { RightPanelContainer, PanelHeader, GroupsList, EmptyGroupsState } from './styles';
 
 interface RightPanelProps {
@@ -27,6 +29,7 @@ export function RightPanel({
   onDeleteGroup,
   onRenameGroup,
 }: RightPanelProps) {
+  const { formatMessage } = useIntl();
   const groupIds = groups.map((g) => `group-${g.id}`);
 
   return (
@@ -35,11 +38,13 @@ export function RightPanel({
         <Flex alignItems="center" gap={2}>
           <FolderIconSmallBlue />
           <Typography fontWeight="bold" textColor="neutral800">
-            Sidebar Groups ({activeTab === 'collectionType' ? 'Collection Types' : 'Single Types'})
+            {activeTab === 'collectionType'
+              ? formatMessage({ id: getTrad('groups.title.collectionType'), defaultMessage: 'Sidebar Groups (Collection Types)' })
+              : formatMessage({ id: getTrad('groups.title.singleType'), defaultMessage: 'Sidebar Groups (Single Types)' })}
           </Typography>
         </Flex>
         <Button startIcon={<Plus />} onClick={onNewGroup} size="S">
-          New Group
+          {formatMessage({ id: getTrad('groups.new'), defaultMessage: 'New Group' })}
         </Button>
       </PanelHeader>
 
@@ -47,10 +52,12 @@ export function RightPanel({
         {groups.length === 0 ? (
           <EmptyGroupsState>
             <Typography variant="delta" textColor="neutral600">
-              No groups yet
+              {formatMessage({ id: getTrad('groups.empty.title'), defaultMessage: 'No groups yet' })}
             </Typography>
             <Typography variant="pi" textColor="neutral500" style={{ marginTop: '8px' }}>
-              Create a group and drag {activeTab === 'collectionType' ? 'collection' : 'single'} types into it.
+              {activeTab === 'collectionType'
+                ? formatMessage({ id: getTrad('groups.empty.collectionType'), defaultMessage: 'Create a group and drag collection types into it.' })
+                : formatMessage({ id: getTrad('groups.empty.singleType'), defaultMessage: 'Create a group and drag single types into it.' })}
             </Typography>
           </EmptyGroupsState>
         ) : (
