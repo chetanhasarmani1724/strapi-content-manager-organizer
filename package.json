@@ -68,7 +68,8 @@
     "build": "strapi-plugin build",
     "watch": "strapi-plugin watch",
     "verify": "strapi-plugin verify",
-    "prepublishOnly": "npm run build && npm run verify"
+    "prepublishOnly": "npm run build && npm run verify",
+    "test": "node --test server/tests/*.test.ts"
   },
   "devDependencies": {
     "@strapi/design-system": "^2.0.0",

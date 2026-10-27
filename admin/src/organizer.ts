@@ -165,14 +165,20 @@ function stripPrefix(text: string): string {
   return text.replace(/^\d{1,3}\s+/, '');
 }
 
-function extractSingularName(href: string): string | null {
-  const match = href.match(/(?:api|plugin)::[^.]+\.([^/&#?]+)/);
-  return match ? match[1] : null;
+// Identifiers a group item may use to reference a sidebar link, most specific first:
+// full uid, `<prefix>.<singularName>` (disambiguates shared names), bare singularName.
+function extractKeys(href: string): string[] | null {
+  const match = href.match(/((?:api|plugin)::([^.]+)\.([^/&#?]+))/);
+  return match ? [match[1], `${match[2]}.${match[3]}`, match[3]] : null;
 }
 
-function findGroup(singularName: string): MenuGroup | null {
+function findItemKey(group: MenuGroup, keys: string[]): string | null {
+  return keys.find((key) => group.items.includes(key)) ?? null;
+}
+
+function findGroup(keys: string[]): MenuGroup | null {
   for (const group of menuConfig.groups) {
-    if (group.items.includes(singularName)) return group;
+    if (findItemKey(group, keys)) return group;
   }
   return null;
 }
@@ -305,6 +311,7 @@ interface LinkItem {
   li: HTMLElement;
   link: HTMLAnchorElement;
   singularName: string;
+  keys: string[];
 }
 
 function displayText(item: LinkItem): string {
@@ -385,10 +392,10 @@ function reorganizeOl(ol: HTMLElement, force = false) {
     if (!link) return;
 
     const href = link.getAttribute('href') || '';
-    const singularName = extractSingularName(href);
-    if (!singularName) return;
+    const keys = extractKeys(href);
+    if (!keys) return;
 
-    items.push({ li: li as HTMLElement, link, singularName });
+    items.push({ li: li as HTMLElement, link, singularName: keys[2], keys });
   });
 
   if (items.length === 0) return;
@@ -405,7 +412,7 @@ function reorganizeOl(ol: HTMLElement, force = false) {
   }
 
   for (const item of items) {
-    const group = findGroup(item.singularName);
+    const group = findGroup(item.keys);
     if (group) {
       grouped.get(group.id)!.items.push(item);
     } else {
@@ -416,8 +423,8 @@ function reorganizeOl(ol: HTMLElement, force = false) {
   if (menuConfig.sortBy === 'custom') {
     for (const [, entry] of grouped) {
       entry.items.sort((a, b) => {
-        const indexA = entry.group.items.indexOf(a.singularName);
-        const indexB = entry.group.items.indexOf(b.singularName);
+        const indexA = entry.group.items.indexOf(findItemKey(entry.group, a.keys)!);
+        const indexB = entry.group.items.indexOf(findItemKey(entry.group, b.keys)!);
         return indexA - indexB;
       });
     }
